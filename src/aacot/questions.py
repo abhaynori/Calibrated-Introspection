@@ -46,17 +46,22 @@ def load_mmlu_redux(subjects: list[str] | None = None, limit: int | None = None)
     except ImportError as e:
         raise ImportError("MMLU-Redux loader needs `datasets`: pip install datasets") from e
 
-    ds = load_dataset("edinburgh-dawg/mmlu-redux", "all", split="test")
+    from datasets import get_dataset_config_names
+
+    configs = subjects or get_dataset_config_names("edinburgh-dawg/mmlu-redux")
     out: list[BaseQuestion] = []
-    for i, row in enumerate(ds):
-        if subjects and row.get("subject") not in subjects:
-            continue
-        opts = row["choices"]
-        gold = chr(ord("A") + int(row["answer"]))
-        out.append(BaseQuestion(f"mmlu-{i}", "mmlu", row.get("subject", "?"),
-                                row["question"], list(opts), gold))
-        if limit and len(out) >= limit:
-            break
+    for subject in configs:
+        ds = load_dataset("edinburgh-dawg/mmlu-redux", subject, split="test")
+        for i, row in enumerate(ds):
+            # redux flags bad rows in error_type; keep only the clean ("ok") ones
+            if row.get("error_type") not in (None, "ok"):
+                continue
+            opts = row["choices"]
+            gold = chr(ord("A") + int(row["answer"]))
+            out.append(BaseQuestion(f"mmlu-{subject}-{i}", "mmlu", subject,
+                                    row["question"], list(opts), gold))
+            if limit and len(out) >= limit:
+                return out
     return out
 
 
