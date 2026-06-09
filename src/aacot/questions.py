@@ -49,19 +49,28 @@ def load_mmlu_redux(subjects: list[str] | None = None, limit: int | None = None)
     from datasets import get_dataset_config_names
 
     configs = subjects or get_dataset_config_names("edinburgh-dawg/mmlu-redux")
-    out: list[BaseQuestion] = []
+    per_subject: list[list[BaseQuestion]] = []
     for subject in configs:
         ds = load_dataset("edinburgh-dawg/mmlu-redux", subject, split="test")
+        qs: list[BaseQuestion] = []
         for i, row in enumerate(ds):
             # redux flags bad rows in error_type; keep only the clean ("ok") ones
             if row.get("error_type") not in (None, "ok"):
                 continue
             opts = row["choices"]
             gold = chr(ord("A") + int(row["answer"]))
-            out.append(BaseQuestion(f"mmlu-{subject}-{i}", "mmlu", subject,
-                                    row["question"], list(opts), gold))
-            if limit and len(out) >= limit:
-                return out
+            qs.append(BaseQuestion(f"mmlu-{subject}-{i}", "mmlu", subject,
+                                   row["question"], list(opts), gold))
+        per_subject.append(qs)
+
+    # round-robin across subjects so a --limit yields a balanced spread
+    out: list[BaseQuestion] = []
+    for rank in range(max((len(q) for q in per_subject), default=0)):
+        for qs in per_subject:
+            if rank < len(qs):
+                out.append(qs[rank])
+                if limit and len(out) >= limit:
+                    return out
     return out
 
 
