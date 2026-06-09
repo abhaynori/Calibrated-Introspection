@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# experiment artifacts
+data/*.jsonl
+data/raw/
+runs/
+activations/
+*.npy
+*.npz
+*.memmap
+*.pt
+*.safetensors
+
+# caches
+.cache/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
